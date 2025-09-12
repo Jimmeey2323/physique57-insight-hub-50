@@ -78,6 +78,7 @@ export interface NewClientData {
   period: string;
   unique: string;
   firstPurchase: string;
+  monthYear?: string;
   conversionSpan: number;
 }
 
@@ -96,6 +97,11 @@ export interface PayrollData {
   nonEmptyBarreSessions: number;
   barreCustomers: number;
   barrePaid: number;
+  strengthSessions?: number;
+  emptyStrengthSessions?: number;
+  nonEmptyStrengthSessions?: number;
+  strengthCustomers?: number;
+  strengthPaid?: number;
   totalSessions: number;
   totalEmptySessions: number;
   totalNonEmptySessions: number;
@@ -108,6 +114,9 @@ export interface PayrollData {
   retention: string;
   converted: number;
   conversion: string;
+  conversionRate?: number;
+  retentionRate?: number;
+  newCustomers?: number;
   classAverageInclEmpty: number;
   classAverageExclEmpty: number;
 }
@@ -237,12 +246,43 @@ export interface InteractiveChartProps {
 }
 
 export interface LateCancellationsData {
-  location: string;
-  tableType?: string;
-  cleanedClass?: string;
-  trainerName?: string;
+  memberId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  location?: string;
+  sessionName?: string;
+  teacherName?: string;
   cleanedProduct?: string;
-  // Monthly data columns - using a flexible approach for the date columns
+  cleanedCategory?: string;
+  cleanedClass?: string;
+  paymentMethodName?: string;
+  dateIST?: string;
+  dayOfWeek?: string;
+  time?: string;
+  duration?: number;
+  capacity?: number;
+  month?: string;
+  year?: number;
+  paidAmount?: number;
+  isNew?: string;
+  tableType?: string;
+  [key: string]: string | number | undefined;
+}
+
+export interface DiscountAnalysisData {
+  memberId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  location?: string;
+  cleanedProduct?: string;
+  cleanedCategory?: string;
+  mrpPostTax?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
+  paymentDate?: string;
+  soldBy?: string;
   [key: string]: string | number | undefined;
 }
 
@@ -257,12 +297,42 @@ export interface LateCancellationsFilterOptions {
   productType: string[];
 }
 
+export interface ExpirationData {
+  uniqueId: string;
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  membershipName: string;
+  endDate: string;
+  homeLocation: string;
+  currentUsage: string;
+  id: string;
+  orderAt: string;
+  soldBy: string;
+  membershipId: string;
+  frozen: boolean;
+  paid: string;
+  status: string;
+}
+
+export interface ExpirationFilterOptions {
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  location: string[];
+  status: string[];
+  membershipType: string[];
+  soldBy: string[];
+}
+
 export interface DrillDownModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   data: any[];
-  type: 'product' | 'category' | 'paymentMethod' | 'metric' | 'member' | 'soldBy' | 'client-conversion' | 'trainer' | 'location' | 'late-cancellations';
+  type: 'product' | 'category' | 'paymentMethod' | 'metric' | 'member' | 'soldBy' | 'client-conversion' | 'trainer' | 'location' | 'expiration';
   columns: Array<{
     key: string;
     header: string;

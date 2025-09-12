@@ -15,6 +15,7 @@ export const useNewClientData = () => {
   const [data, setData] = useState<NewClientData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const getAccessToken = async () => {
     try {
@@ -39,10 +40,65 @@ export const useNewClientData = () => {
     }
   };
 
+  // Helper to calculate conversion span in days
+  const calculateConversionSpan = (firstVisitDate: string, firstPurchaseDate: string): number => {
+    if (!firstVisitDate || !firstPurchaseDate) return 0;
+    
+    let firstVisit: Date, firstPurchase: Date;
+    
+    // Parse first visit date
+    if (firstVisitDate.includes('/')) {
+      const [day, month, year] = firstVisitDate.split(' ')[0].split('/');
+      firstVisit = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      firstVisit = new Date(firstVisitDate);
+    }
+    
+    // Parse first purchase date  
+    if (firstPurchaseDate.includes('/')) {
+      const [day, month, year] = firstPurchaseDate.split(' ')[0].split('/');
+      firstPurchase = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      firstPurchase = new Date(firstPurchaseDate);
+    }
+    
+    if (isNaN(firstVisit.getTime()) || isNaN(firstPurchase.getTime())) return 0;
+    
+    const diffTime = firstPurchase.getTime() - firstVisit.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
+  // Helper to extract monthYear from a date string (YYYY-MM or MMM YYYY)
+  const getMonthYear = (dateStr: string = ''): string => {
+    if (!dateStr) return '';
+    
+    // Handle format: "01/01/2020, 17:30:00"
+    let parsedDate: Date;
+    if (dateStr.includes('/')) {
+      // Split by comma and space to get date part only
+      const datePart = dateStr.split(',')[0].trim();
+      const [day, month, year] = datePart.split('/');
+      parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      parsedDate = new Date(dateStr);
+    }
+    
+    if (isNaN(parsedDate.getTime())) return '';
+    
+    const year = parsedDate.getFullYear();
+    const month = (parsedDate.getMonth() + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  };
+
   const fetchNewClientData = async () => {
     try {
-      setLoading(true);
+      if (isInitialized) {
+        setLoading(true);
+      }
+      console.log('Fetching new client data from Google Sheets...');
       const accessToken = await getAccessToken();
+      console.log('Access token obtained for new client data');
       
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/New?alt=json`,
@@ -65,190 +121,56 @@ export const useNewClientData = () => {
         return;
       }
 
-      const newClientData: NewClientData[] = rows.slice(1).map((row: any[]) => ({
-        memberId: row[0] || '',
-        firstName: row[1] || '',
-        lastName: row[2] || '',
-        email: row[3] || '',
-        phoneNumber: row[4] || '',
-        firstVisitDate: row[5] || '',
-        firstVisitEntityName: row[6] || '',
-        firstVisitType: row[7] || '',
-        firstVisitLocation: row[8] || '',
-        paymentMethod: row[9] || '',
-        membershipUsed: row[10] || '',
-        homeLocation: row[11] || '',
-        classNo: parseFloat(row[12]) || 0,
-        trainerName: row[13] || '',
-        isNew: row[14] || '',
-        visitsPostTrial: parseFloat(row[15]) || 0,
-        membershipsBoughtPostTrial: row[16] || '',
-        purchaseCountPostTrial: parseFloat(row[17]) || 0,
-        ltv: parseFloat(row[18]) || 0,
-        retentionStatus: row[19] || '',
-        conversionStatus: row[20] || '',
-        period: row[21] || '',
-        unique: row[22] || '',
-        firstPurchase: row[23] || '',
-        conversionSpan: parseFloat(row[24]) || 0,
-      }));
+      const newClientData: NewClientData[] = rows.slice(1).map((row: any[]) => {
+        const firstVisitDate = row[5] || '';
+        return {
+          memberId: row[0] || '',
+          firstName: row[1] || '',
+          lastName: row[2] || '',
+          email: row[3] || '',
+          phoneNumber: row[4] || '',
+          firstVisitDate,
+          firstVisitEntityName: row[6] || '',
+          firstVisitType: row[7] || '',
+          firstVisitLocation: row[8] || '',
+          paymentMethod: row[9] || '',
+          membershipUsed: row[10] || '',
+          homeLocation: row[11] || '',
+          classNo: parseFloat(row[12]) || 0,
+          trainerName: row[13] || '',
+          isNew: row[14] || '',
+          visitsPostTrial: parseFloat(row[15]) || 0,
+          membershipsBoughtPostTrial: row[16] || '',
+          purchaseCountPostTrial: parseFloat(row[17]) || 0,
+          ltv: parseFloat(row[18]) || 0,
+          retentionStatus: row[19] || '',
+          conversionStatus: row[20] || '',
+          period: row[21] || '',
+          unique: row[22] || '',
+          firstPurchase: row[23] || '',
+          conversionSpan: calculateConversionSpan(firstVisitDate, row[23] || ''),
+          monthYear: getMonthYear(firstVisitDate),
+        };
+      });
 
       console.log('New client data loaded:', newClientData.length, 'records');
       setData(newClientData);
       setError(null);
+      setIsInitialized(true);
     } catch (err) {
       console.error('Error fetching new client data:', err);
       setError('Failed to load new client data');
-      
-      // Use mock data for development
-      console.log('Using mock new client data for development');
-      const mockData: NewClientData[] = [
-        {
-          memberId: 'M001',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@email.com',
-          phoneNumber: '+91-9876543210',
-          firstVisitDate: '2024-01-15',
-          firstVisitEntityName: 'Kwality House, Kemps Corner',
-          firstVisitType: 'Trial Class',
-          firstVisitLocation: 'Kwality House, Kemps Corner',
-          paymentMethod: 'Credit Card',
-          membershipUsed: 'Unlimited Monthly',
-          homeLocation: 'Kwality House, Kemps Corner',
-          classNo: 1,
-          trainerName: 'Sarah Johnson',
-          isNew: 'Yes',
-          visitsPostTrial: 8,
-          membershipsBoughtPostTrial: 'Unlimited Monthly',
-          purchaseCountPostTrial: 1,
-          ltv: 15000,
-          retentionStatus: 'Retained',
-          conversionStatus: 'Converted',
-          period: 'January 2024',
-          unique: 'unique_123',
-          firstPurchase: 'Unlimited Monthly',
-          conversionSpan: 5,
-        },
-        {
-          memberId: 'M002',
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane.smith@email.com',
-          phoneNumber: '+91-9876543211',
-          firstVisitDate: '2024-01-20',
-          firstVisitEntityName: 'Supreme HQ, Bandra',
-          firstVisitType: 'Drop-in Class',
-          firstVisitLocation: 'Supreme HQ, Bandra',
-          paymentMethod: 'UPI',
-          membershipUsed: 'Class Pack 10',
-          homeLocation: 'Supreme HQ, Bandra',
-          classNo: 2,
-          trainerName: 'Mike Wilson',
-          isNew: 'Yes',
-          visitsPostTrial: 12,
-          membershipsBoughtPostTrial: 'Class Pack 10',
-          purchaseCountPostTrial: 2,
-          ltv: 8000,
-          retentionStatus: 'Retained',
-          conversionStatus: 'Converted',
-          period: 'January 2024',
-          unique: 'unique_124',
-          firstPurchase: 'Class Pack 10',
-          conversionSpan: 7,
-        },
-        {
-          memberId: 'M003',
-          firstName: 'Alex',
-          lastName: 'Brown',
-          email: 'alex.brown@email.com',
-          phoneNumber: '+91-9876543212',
-          firstVisitDate: '2024-02-01',
-          firstVisitEntityName: 'Kenkere House, Bengaluru',
-          firstVisitType: 'Trial Class',
-          firstVisitLocation: 'Kenkere House, Bengaluru',
-          paymentMethod: 'Debit Card',
-          membershipUsed: 'Class Pack 5',
-          homeLocation: 'Kenkere House, Bengaluru',
-          classNo: 3,
-          trainerName: 'Lisa Davis',
-          isNew: 'Yes',
-          visitsPostTrial: 5,
-          membershipsBoughtPostTrial: 'Class Pack 5',
-          purchaseCountPostTrial: 1,
-          ltv: 4500,
-          retentionStatus: 'Not Retained',
-          conversionStatus: 'Converted',
-          period: 'February 2024',
-          unique: 'unique_125',
-          firstPurchase: 'Class Pack 5',
-          conversionSpan: 3,
-        },
-        {
-          memberId: 'M004',
-          firstName: 'Emma',
-          lastName: 'Wilson',
-          email: 'emma.wilson@email.com',
-          phoneNumber: '+91-9876543213',
-          firstVisitDate: '2024-02-10',
-          firstVisitEntityName: 'Kwality House, Kemps Corner',
-          firstVisitType: 'Trial Class',
-          firstVisitLocation: 'Kwality House, Kemps Corner',
-          paymentMethod: 'UPI',
-          membershipUsed: 'Unlimited Monthly',
-          homeLocation: 'Kwality House, Kemps Corner',
-          classNo: 4,
-          trainerName: 'Sarah Johnson',
-          isNew: 'Yes',
-          visitsPostTrial: 6,
-          membershipsBoughtPostTrial: '',
-          purchaseCountPostTrial: 0,
-          ltv: 0,
-          retentionStatus: 'Not Retained',
-          conversionStatus: 'Not Converted',
-          period: 'February 2024',
-          unique: 'unique_126',
-          firstPurchase: '',
-          conversionSpan: 0,
-        },
-        {
-          memberId: 'M005',
-          firstName: 'David',
-          lastName: 'Garcia',
-          email: 'david.garcia@email.com',
-          phoneNumber: '+91-9876543214',
-          firstVisitDate: '2024-02-15',
-          firstVisitEntityName: 'Supreme HQ, Bandra',
-          firstVisitType: 'Drop-in Class',
-          firstVisitLocation: 'Supreme HQ, Bandra',
-          paymentMethod: 'Credit Card',
-          membershipUsed: 'Unlimited Monthly',
-          homeLocation: 'Supreme HQ, Bandra',
-          classNo: 5,
-          trainerName: 'Mike Wilson',
-          isNew: 'Yes',
-          visitsPostTrial: 10,
-          membershipsBoughtPostTrial: 'Unlimited Monthly',
-          purchaseCountPostTrial: 1,
-          ltv: 12000,
-          retentionStatus: 'Retained',
-          conversionStatus: 'Converted',
-          period: 'February 2024',
-          unique: 'unique_127',
-          firstPurchase: 'Unlimited Monthly',
-          conversionSpan: 8,
-        }
-      ];
-      setData(mockData);
-      setError(null);
+      setIsInitialized(true);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNewClientData();
-  }, []);
+    if (!isInitialized) {
+      fetchNewClientData();
+    }
+  }, [isInitialized]);
 
   return { data, loading, error, refetch: fetchNewClientData };
 };

@@ -24,6 +24,12 @@ export const YearOnYearMetricTabs: React.FC<YearOnYearMetricTabsProps> = ({
           Revenue
         </TabsTrigger>
         <TabsTrigger
+          value="units"
+          className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
+        >
+          Units Sold
+        </TabsTrigger>
+        <TabsTrigger
           value="transactions"
           className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
         >
@@ -36,22 +42,16 @@ export const YearOnYearMetricTabs: React.FC<YearOnYearMetricTabsProps> = ({
           Members
         </TabsTrigger>
         <TabsTrigger
-          value="units"
+          value="auv"
           className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
         >
-          Units Sold
+          AUV
         </TabsTrigger>
         <TabsTrigger
           value="atv"
           className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
         >
           ATV
-        </TabsTrigger>
-        <TabsTrigger
-          value="auv"
-          className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
-        >
-          AUV
         </TabsTrigger>
         <TabsTrigger
           value="asv"
@@ -69,7 +69,7 @@ export const YearOnYearMetricTabs: React.FC<YearOnYearMetricTabsProps> = ({
           value="vat"
           className="text-xs px-3 py-2.5 min-w-20 h-8 flex items-center justify-center data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
         >
-          VAT
+          Contribution
         </TabsTrigger>
       </TabsList>
     </Tabs>

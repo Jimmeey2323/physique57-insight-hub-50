@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { SalesData, FilterOptions, YearOnYearMetricType, EnhancedYearOnYearTableProps } from '@/types/dashboard';
 import { YearOnYearMetricTabs } from './YearOnYearMetricTabs';
 import { formatCurrency, formatNumber, formatPercentage } from '@/utils/formatters';
-import { ChevronDown, ChevronRight, RefreshCw, Filter, Calendar, TrendingUp, Download } from 'lucide-react';
+import { ChevronDown, ChevronRight, RefreshCw, Filter, Calendar, TrendingUp, TrendingDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
   const [showFilters, setShowFilters] = useState(false);
   const [localCollapsedGroups, setLocalCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Initialize all groups as collapsed by default
+  // Initialize all groups as expanded by default
   const [isInitialized, setIsInitialized] = useState(false);
   const parseDate = (dateStr: string): Date | null => {
     if (!dateStr) return null;
@@ -113,6 +113,12 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
       default:
         return formatNumber(value);
     }
+  };
+
+  const getGrowthPercentage = (current: number, previous: number) => {
+    if (previous === 0 && current === 0) return null;
+    if (previous === 0) return '+100';
+    return ((current - previous) / previous * 100).toFixed(1);
   };
 
   // Get all data for historic comparison (include 2024 data regardless of filters)
@@ -213,8 +219,8 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
 
     // Initialize all groups as collapsed by default if not already initialized
     if (!isInitialized && categories.length > 0) {
-      const allCategories = new Set(categories.map(cat => cat.category));
-      setLocalCollapsedGroups(allCategories);
+      // Start with all groups expanded
+      setLocalCollapsedGroups(new Set());
       setIsInitialized(true);
     }
     return categories;
@@ -324,9 +330,9 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border-t border-gray-200 rounded-lg">
-            <thead className="bg-gradient-to-r from-purple-700 to-purple-900 text-white font-semibold text-sm uppercase tracking-wider px-4 py-2 sticky top-0 z-20">
-              <tr className="bg-gradient-to-r from-blue-700 to-indigo-900 text-white font-semibold text-sm uppercase tracking-wider px-4 py-2 rounded-md">
-                <th className="bg-gradient-to-r from-blue-700 to-blue-700 text-white font-semibold text-sm uppercase tracking-wider px-4 py-2 rounded-none">
+            <thead className="bg-gradient-to-r from-purple-700 to-purple-900 text-white font-semibold text-sm uppercase tracking-wider sticky top-0 z-30">
+              <tr className="bg-gradient-to-r from-blue-800 to-indigo-900 text-white font-semibold text-sm uppercase tracking-wider">
+                <th className="bg-gradient-to-r from-blue-800 to-blue-800 text-white font-semibold text-sm uppercase tracking-wider px-4 py-2 sticky left-0 z-40">
                   Product/Category
                 </th>
                 {monthlyData.map(({
@@ -346,20 +352,75 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
             <tbody>
               {processedData.map(categoryGroup => <React.Fragment key={categoryGroup.category}>
                   <tr onClick={() => handleGroupToggle(categoryGroup.category)} className="bg-white hover:bg-gray-100 cursor-pointer border-b border-gray-200 group transition-colors duration-200 ease-in-out">
-                    <td className="py-4 font-semibold text-gray-800 group-hover:text-gray-900 bg-white group-hover:bg-gray-100 sticky left-0 z-10 transition-colors duration-200 ease-in-out px-[10px] min-w-80 text-sm">
+                    <td className="py-2 font-semibold text-gray-800 group-hover:text-gray-900 bg-white group-hover:bg-gray-100 sticky left-0 z-20 transition-colors duration-200 ease-in-out px-[10px] min-w-80 text-sm max-h-[35px] h-[35px] overflow-hidden">
                       <div className="flex justify-between items-center min-w-full text-md text-bold">
                         {localCollapsedGroups.has(categoryGroup.category) ? <ChevronRight className="w-4 h-4 mr-2 text-gray-500 transition-transform duration-200" /> : <ChevronDown className="w-4 h-4 mr-2 text-gray-500 transition-transform duration-200" />}
                         {categoryGroup.category}
-                        <Badge variant="secondary" className="ml-auto text-sm text-white bg-blue-900 min-w-32 text-right py-1 capitalize rounded-lg px-[12px]">
+                        <Badge variant="secondary" className="ml-auto text-sm text-yellow-300 min-w-12 bg-slate-950 rounded-xl">
                           {categoryGroup.products.length} products
                         </Badge>
                       </div>
                     </td>
-                    {monthlyData.map(({
-                  key
-                }) => <td key={key} className="px-4 py-4 text-center font-semibold text-gray-900 text-sm">
+                  {monthlyData.map(({
+                key,
+                year,
+                month,
+                display
+              }, monthIndex) => {
+                const current = categoryGroup.monthlyValues[key] || 0;
+                const previous = monthIndex > 0 ? categoryGroup.monthlyValues[monthlyData[monthIndex - 1].key] || 0 : 0;
+                const growthPercentage = getGrowthPercentage(current, previous);
+                
+                return <td 
+                  key={key}
+                  className="px-4 py-2 text-center font-semibold text-gray-900 text-sm hover:bg-blue-100 cursor-pointer transition-colors max-h-[35px] h-[35px] overflow-hidden"
+                  title={growthPercentage ? `${growthPercentage}% vs last year` : ''}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent group toggle
+                    
+                    // Category group cell click for specific month
+                    const categoryMonthData = data.filter(item => {
+                      const itemDate = parseDate(item.paymentDate);
+                      if (!itemDate) return false;
+                      const matchesCategory = item.cleanedCategory === categoryGroup.category;
+                      const matchesMonth = itemDate.getFullYear() === year && itemDate.getMonth() + 1 === month;
+                      return matchesCategory && matchesMonth;
+                    });
+                    
+                    const monthRevenue = categoryMonthData.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+                    const monthTransactions = categoryMonthData.length;
+                    const monthCustomers = new Set(categoryMonthData.map(item => item.memberId || item.customerEmail)).size;
+                    
+                    const categoryCellData = {
+                      name: `${categoryGroup.category} - ${display}`,
+                      category: categoryGroup.category,
+                      totalRevenue: monthRevenue,
+                      grossRevenue: monthRevenue,
+                      netRevenue: monthRevenue,
+                      totalValue: monthRevenue,
+                      totalCurrent: monthRevenue,
+                      metricValue: monthRevenue,
+                      transactions: monthTransactions,
+                      totalTransactions: monthTransactions,
+                      uniqueMembers: monthCustomers,
+                      totalCustomers: monthCustomers,
+                      rawData: categoryMonthData,
+                      filteredTransactionData: categoryMonthData,
+                      isDynamic: true,
+                      calculatedFromFiltered: true,
+                      isGroupCell: true,
+                      cellSpecific: true,
+                      month: display,
+                      monthKey: key
+                    };
+                    
+                    console.log(`Category group cell click: ${categoryGroup.category} - ${display}: ${monthTransactions} transactions, ${monthRevenue} revenue`);
+                    onRowClick && onRowClick(categoryCellData);
+                  }}
+                >
                         {formatMetricValue(categoryGroup.monthlyValues[key] || 0, selectedMetric)}
-                      </td>)}
+                      </td>;
+                })}
                   </tr>
 
                   {!localCollapsedGroups.has(categoryGroup.category) && categoryGroup.products.map(product => <tr key={`${categoryGroup.category}-${product.product}`} className="hover:bg-blue-50 cursor-pointer border-b border-gray-100 transition-colors duration-200" onClick={() => onRowClick && onRowClick(product.rawData)}>
@@ -372,12 +433,87 @@ export const EnhancedYearOnYearTable: React.FC<EnhancedYearOnYearTableProps> = (
                         </div>
                       </td>
                       {monthlyData.map(({
-                  key
-                }) => <td key={key} className="px-4 py-3 text-center text-sm text-gray-900 font-mono">
+                  key,
+                  year,
+                  month,
+                  display
+                }) => 
+                        <td 
+                          key={key} 
+                          className="px-4 py-3 text-center text-sm text-gray-900 font-mono hover:bg-blue-50 cursor-pointer transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click
+                            
+                            // Filter data for this specific month and product
+                            const monthSpecificData = (Array.isArray(product.rawData) ? product.rawData : []).filter((transaction: any) => {
+                              const itemDate = parseDate(transaction.paymentDate);
+                              if (!itemDate) return false;
+                              return itemDate.getFullYear() === year && itemDate.getMonth() + 1 === month;
+                            });
+                            
+                            const monthRevenue = monthSpecificData.reduce((sum: any, transaction: any) => sum + (transaction.paymentValue || 0), 0);
+                            const monthTransactions = monthSpecificData.length;
+                            const monthCustomers = new Set(monthSpecificData.map((transaction: any) => transaction.memberId || transaction.customerEmail)).size;
+                            
+                            const enhancedCellData = {
+                              ...product,
+                              name: `${product.product} - ${display}`,
+                              totalRevenue: monthRevenue,
+                              grossRevenue: monthRevenue,
+                              netRevenue: monthRevenue,
+                              totalValue: monthRevenue,
+                              totalCurrent: monthRevenue,
+                              metricValue: monthRevenue,
+                              transactions: monthTransactions,
+                              totalTransactions: monthTransactions,
+                              uniqueMembers: monthCustomers,
+                              totalCustomers: monthCustomers,
+                              rawData: monthSpecificData,
+                              filteredTransactionData: monthSpecificData,
+                              isDynamic: true,
+                              calculatedFromFiltered: true,
+                              cellSpecific: true,
+                              month: display,
+                              monthKey: key
+                            };
+                            
+                            console.log(`Cell click: ${product.product} - ${display}: ${monthTransactions} transactions, ${monthRevenue} revenue`);
+                            onRowClick && onRowClick(enhancedCellData);
+                          }}
+                        >
                           {formatMetricValue(product.monthlyValues[key] || 0, selectedMetric)}
                         </td>)}
                     </tr>)}
+
+                  {/* Category Totals Row */}
+                  <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 border-t-2 border-blue-300 font-bold">
+                    <td className="px-8 py-3 text-sm font-bold text-blue-900 sticky left-0 bg-gradient-to-r from-blue-100 to-indigo-100 z-10">
+                      {categoryGroup.category} TOTAL
+                    </td>
+                    {monthlyData.map(({
+                key
+              }) => <td key={key} className="px-4 py-3 text-center text-sm text-blue-900 font-mono font-bold">
+                        {formatMetricValue(categoryGroup.monthlyValues[key] || 0, selectedMetric)}
+                      </td>)}
+                  </tr>
                 </React.Fragment>)}
+
+              {/* Grand Totals Row */}
+              <tr className="bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-500 text-white border-t-4 border-emerald-700">
+                <td className="px-8 py-3 text-sm font-bold sticky left-0 bg-gradient-to-r from-emerald-500 to-teal-600 z-10">
+                  GRAND TOTAL
+                </td>
+                {monthlyData.map(({
+              key
+            }) => {
+              const grandTotal = processedData.reduce((sum, categoryGroup) => 
+                sum + (categoryGroup.monthlyValues[key] || 0), 0
+              );
+              return <td key={key} className="px-4 py-3 text-center text-sm font-mono font-bold">
+                      {formatMetricValue(grandTotal, selectedMetric)}
+                    </td>;
+            })}
+              </tr>
             </tbody>
           </table>
         </div>

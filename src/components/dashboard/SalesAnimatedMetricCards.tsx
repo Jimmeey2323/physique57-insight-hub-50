@@ -20,11 +20,24 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
       return [];
     }
 
-    // Calculate comprehensive metrics
-    const totalRevenue = data.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+    console.log('Calculating metrics for', data.length, 'records');
+
+    // Calculate comprehensive metrics efficiently
+    let totalRevenue = 0;
+    let totalVAT = 0;
+    const memberIds = new Set<string>();
+    
+    // Single pass through data to calculate all metrics
+    data.forEach(item => {
+      totalRevenue += (typeof item.paymentValue === 'number' ? item.paymentValue : 0);
+      totalVAT += (typeof item.paymentVAT === 'number' ? item.paymentVAT : 0);
+      if (item.memberId) {
+        memberIds.add(item.memberId);
+      }
+    });
+
     const totalTransactions = data.length;
-    const uniqueMembers = new Set(data.map(item => item.memberId)).size;
-    const totalVAT = data.reduce((sum, item) => sum + (item.paymentVAT || 0), 0);
+    const uniqueMembers = memberIds.size;
     const averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
     const averageSpendPerMember = uniqueMembers > 0 ? totalRevenue / uniqueMembers : 0;
 
@@ -34,7 +47,7 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
     const memberGrowth = 15.2;
     const atvGrowth = 4.7;
 
-    return [
+    const calculatedMetrics = [
       {
         title: "Total Revenue",
         value: formatCurrency(totalRevenue),
@@ -114,22 +127,51 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         uniqueMembers: uniqueMembers
       }
     ];
+
+    console.log('Calculated metrics:', {
+      totalRevenue,
+      totalTransactions,
+      uniqueMembers,
+      averageTransactionValue,
+      totalVAT
+    });
+
+    return calculatedMetrics;
   }, [data]);
 
   const handleMetricClick = (metric: any) => {
     if (onMetricClick) {
+      // Calculate fresh metrics from current data for dynamic drill-down
+      const dynamicRevenue = data.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+      const dynamicTransactions = data.length;
+      const dynamicCustomers = new Set(data.map(item => item.memberId || item.customerEmail)).size;
+      
       const drillDownData = {
         title: metric.title,
-        metricValue: metric.grossRevenue,
-        grossRevenue: metric.grossRevenue,
-        totalValue: metric.grossRevenue,
-        transactions: metric.transactions,
-        totalTransactions: metric.transactions,
-        uniqueMembers: metric.uniqueMembers,
-        totalCustomers: metric.uniqueMembers,
-        rawData: metric.rawData,
-        type: 'metric'
+        name: metric.title,
+        type: 'metric',
+        // Use dynamic calculations from current filtered data
+        totalRevenue: dynamicRevenue,
+        grossRevenue: dynamicRevenue,
+        netRevenue: dynamicRevenue,
+        totalValue: dynamicRevenue,
+        totalCurrent: dynamicRevenue,
+        metricValue: dynamicRevenue,
+        transactions: dynamicTransactions,
+        totalTransactions: dynamicTransactions,
+        uniqueMembers: dynamicCustomers,
+        totalCustomers: dynamicCustomers,
+        totalChange: 12.5, // Mock change for demo
+        rawData: data,
+        filteredTransactionData: data,
+        months: {},
+        monthlyValues: {},
+        // Add dynamic flags
+        isDynamic: true,
+        calculatedFromFiltered: true
       };
+      
+      console.log(`Metric ${metric.title} clicked: ${dynamicTransactions} transactions, ${dynamicRevenue} revenue`);
       onMetricClick(drillDownData);
     }
   };
@@ -201,7 +243,7 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
                       }`}>
                         {isPositive ? '+' : ''}{metric.change.toFixed(1)}%
                       </span>
-                      <span className="text-sm text-white/80">vs last period</span>
+                      <span className="text-sm text-white/80">vs last month</span>
                     </div>
                   </div>
                 </div>

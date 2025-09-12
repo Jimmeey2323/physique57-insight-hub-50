@@ -1,26 +1,26 @@
-
 import { useState, useEffect, useMemo } from 'react';
+// Assuming useGoogleSheets hook is in this path
 import { useGoogleSheets } from './useGoogleSheets';
 
+// Updated interface to match all columns in the sample data
 export interface DiscountAnalysisData {
   memberId: string;
   customerName: string;
   customerEmail: string;
+  saleItemId: string;
+  paymentCategory: string;
   paymentDate: string;
   paymentValue: number;
+  paidInMoneyCredits: number;
+  paymentVat: number;
   paymentItem: string;
-  paymentMethod: string;
-  soldBy: string;
-  location: string;
-  cleanedProduct: string;
-  cleanedCategory: string;
-  mrpPreTax: number;
-  mrpPostTax: number;
-  discountAmount: number;
-  discountPercentage: number;
-  membershipType: string;
+  cleanedProduct?: string;
+  mrpPostTax?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
+  soldBy?: string;
+  location?: string;
 }
-
 export const useDiscountAnalysis = () => {
   const { data: salesData, loading, error } = useGoogleSheets();
   const [discountData, setDiscountData] = useState<DiscountAnalysisData[]>([]);
@@ -33,65 +33,77 @@ export const useDiscountAnalysis = () => {
         const parseNumber = (value: any): number => {
           if (value === null || value === undefined || value === '') return 0;
           // Handle string values with currency symbols or commas
-          const cleanValue = value.toString().replace(/[₹,\s]/g, '');
+          const cleanValue = value.toString().replace(/[₹,]/g, '').trim();
           const num = parseFloat(cleanValue);
           return isNaN(num) ? 0 : num;
         };
 
-        const parseDate = (dateStr: string) => {
+        const parseDate = (dateStr: string): string => {
           if (!dateStr) return '';
           try {
-            // Split date and time if present
-            const [datePart] = dateStr.split(' ');
-            const [day, month, year] = datePart.split('/');
-            // Create ISO date string for proper parsing
-            const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            return new Date(isoDate).toISOString().split('T')[0];
+            // Handle DD/MM/YYYY format
+            if (dateStr.includes('/')) {
+              const datePart = dateStr.split(',')[0].trim();
+              const [day, month, year] = datePart.split('/');
+              
+              if (day && month && year) {
+                const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                return new Date(isoDate).toISOString().split('T')[0];
+              }
+            }
+            // Handle YYYY-MM-DD format
+            if (dateStr.includes('-')) {
+              const date = new Date(dateStr);
+              if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+              }
+            }
+            return '';
           } catch (e) {
-            console.error('Date parsing error:', e);
+            console.error(`Date parsing error for value: "${dateStr}"`, e);
             return '';
           }
         };
-
+        
+        // Process all sales data, not just discounted ones
         const processedData: DiscountAnalysisData[] = salesData.map((item: any) => {
-          const discountAmount = parseNumber(item['Discount Amount -Mrp- Payment Value']);
-          const discountPercentage = parseNumber(item['Discount Percentage - discount amount/mrp*100']);
+          const discountAmount = parseNumber(item.discountAmount || item['Discount Amount -Mrp- Payment Value'] || 0);
+          const discountPercentage = parseNumber(item.discountPercentage || item['Discount Percentage - discount amount/mrp*100'] || 0);
           
           return {
-            memberId: item['Member ID']?.toString() || '',
-            customerName: item['Customer Name'] || '',
-            customerEmail: item['Customer Email'] || '',
-            paymentDate: parseDate(item['Payment Date'] || ''),
-            paymentValue: parseNumber(item['Payment Value']),
-            paymentItem: item['Payment Item'] || '',
-            paymentMethod: item['Payment Method'] || '',
-            soldBy: item['Sold By'] === '-' ? 'Online/System' : (item['Sold By'] || 'Unknown'),
-            location: item['Calculated Location'] || '',
-            cleanedProduct: item['Cleaned Product'] || '',
-            cleanedCategory: item['Cleaned Category'] || '',
-            mrpPreTax: parseNumber(item['Mrp - Pre Tax']),
-            mrpPostTax: parseNumber(item['Mrp - Post Tax']),
+            memberId: item.memberId || item['Member ID']?.toString() || '',
+            customerName: item.customerName || item['Customer Name'] || '',
+            customerEmail: item.customerEmail || item['Customer Email'] || '',
+            saleItemId: item.saleItemId || item['Sale Item ID']?.toString() || '',
+            paymentCategory: item.paymentCategory || item['Payment Category'] || '',
+            paymentDate: parseDate(item.paymentDate || item['Payment Date'] || ''),
+            paymentValue: parseNumber(item.paymentValue || item['Payment Value'] || 0),
+            paidInMoneyCredits: parseNumber(item.paidInMoneyCredits || item['Paid In Money Credits'] || 0),
+            paymentVat: parseNumber(item.paymentVat || item['Payment VAT'] || 0),
+            paymentItem: item.paymentItem || item['Payment Item'] || '',
+            paymentMethod: item.paymentMethod || item['Payment Method'] || '',
+            paymentStatus: item.paymentStatus || item['Payment Status'] || '',
+            paymentTransactionId: item.paymentTransactionId || item['Payment Transaction ID']?.toString() || '',
+            stripeToken: item.stripeToken || item['Stripe Token'] || '',
+            saleReference: item.saleReference || item['Sale Reference']?.toString() || '',
+            soldBy: item.soldBy === '-' ? 'Online/System' : (item.soldBy || item['Sold By'] || 'Unknown'),
+            location: item.calculatedLocation || item['Calculated Location'] || '',
+            cleanedProduct: item.cleanedProduct || item['Cleaned Product'] || '',
+            cleanedCategory: item.cleanedCategory || item['Cleaned Category'] || '',
+            hostId: item.hostId || item['Host Id']?.toString() || '',
+            mrpPreTax: parseNumber(item.mrpPreTax || item['Mrp - Pre Tax'] || 0),
+            mrpPostTax: parseNumber(item.mrpPostTax || item['Mrp - Post Tax'] || 0),
             discountAmount,
             discountPercentage,
-            membershipType: item['Membership Type'] || '',
+            membershipType: item.membershipType || item['Membership Type']?.trim() || '',
           };
         });
 
-        // Filter for transactions with actual discounts - check both amount and percentage
-        const discountedTransactions = processedData.filter(item => {
-          const hasDiscountAmount = item.discountAmount && item.discountAmount > 0;
-          const hasDiscountPercentage = item.discountPercentage && item.discountPercentage > 0;
-          return hasDiscountAmount || hasDiscountPercentage;
-        });
-
         console.log('Discount Analysis - Total transactions:', processedData.length);
-        console.log('Discount Analysis - Discounted transactions:', discountedTransactions.length);
+        console.log('Discount Analysis - Sample transaction:', processedData[0]);
         
-        if (discountedTransactions.length > 0) {
-          console.log('Sample discount transaction:', discountedTransactions[0]);
-        }
+        setDiscountData(processedData);
 
-        setDiscountData(discountedTransactions);
       } catch (error) {
         console.error('Error processing discount data:', error);
         setDiscountData([]);
@@ -102,10 +114,8 @@ export const useDiscountAnalysis = () => {
     }
   }, [salesData]);
 
-  // Calculate discount metrics
   const metrics = useMemo(() => {
     if (!discountData.length) {
-      console.log('No discount data available for metrics calculation');
       return {
         totalDiscountAmount: 0,
         totalRevenueLost: 0,
@@ -119,12 +129,16 @@ export const useDiscountAnalysis = () => {
       };
     }
 
-    const totalDiscountAmount = discountData.reduce((sum, item) => sum + item.discountAmount, 0);
-    const totalRevenueLost = discountData.reduce((sum, item) => sum + item.discountAmount, 0);
+    const totalDiscountAmount = discountData.reduce((sum, item) => sum + (item.discountAmount || 0), 0);
     const totalTransactions = discountData.length;
-    const avgDiscountPercentage = discountData.reduce((sum, item) => sum + item.discountPercentage, 0) / totalTransactions;
-    const totalPotentialRevenue = discountData.reduce((sum, item) => sum + item.mrpPreTax, 0);
-    const totalActualRevenue = discountData.reduce((sum, item) => sum + item.paymentValue, 0);
+    const totalPotentialRevenue = discountData.reduce((sum, item) => sum + (item.mrpPostTax || item.paymentValue || 0), 0);
+    const totalActualRevenue = discountData.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+
+    // Calculate average discount percentage
+    const discountedItems = discountData.filter(item => (item.discountAmount || 0) > 0);
+    const avgDiscountPercentage = discountedItems.length > 0 
+      ? discountedItems.reduce((sum, item) => sum + (item.discountPercentage || 0), 0) / discountedItems.length 
+      : 0;
 
     // Group by product
     const productBreakdown = discountData.reduce((acc, item) => {
@@ -136,24 +150,24 @@ export const useDiscountAnalysis = () => {
           totalDiscount: 0,
           avgDiscountPercentage: 0,
           revenue: 0,
+          totalMrp: 0,
         };
       }
       acc[key].transactions += 1;
-      acc[key].totalDiscount += item.discountAmount;
-      acc[key].revenue += item.paymentValue;
+      acc[key].totalDiscount += item.discountAmount || 0;
+      acc[key].revenue += item.paymentValue || 0;
+      acc[key].totalMrp += item.mrpPostTax || item.paymentValue || 0;
       return acc;
     }, {} as Record<string, any>);
 
-    // Calculate average discount percentage for each product
     Object.values(productBreakdown).forEach((product: any) => {
-      const productTransactions = discountData.filter(item => item.cleanedProduct === product.product);
-      product.avgDiscountPercentage = productTransactions.reduce((sum, item) => sum + item.discountPercentage, 0) / productTransactions.length;
+      product.avgDiscountPercentage = product.totalMrp > 0 ? (product.totalDiscount / product.totalMrp) * 100 : 0;
     });
 
     // Group by month
     const monthlyBreakdown = discountData.reduce((acc, item) => {
-      const date = new Date(item.paymentDate);
-      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      if (!item.paymentDate) return acc;
+      const monthKey = item.paymentDate.substring(0, 7); // YYYY-MM
       
       if (!acc[monthKey]) {
         acc[monthKey] = {
@@ -164,14 +178,14 @@ export const useDiscountAnalysis = () => {
         };
       }
       acc[monthKey].transactions += 1;
-      acc[monthKey].totalDiscount += item.discountAmount;
-      acc[monthKey].revenue += item.paymentValue;
+      acc[monthKey].totalDiscount += item.discountAmount || 0;
+      acc[monthKey].revenue += item.paymentValue || 0;
       return acc;
     }, {} as Record<string, any>);
 
-    const calculatedMetrics = {
+    return {
       totalDiscountAmount,
-      totalRevenueLost,
+      totalRevenueLost: totalDiscountAmount,
       totalTransactions,
       avgDiscountPercentage,
       totalPotentialRevenue,
@@ -180,9 +194,6 @@ export const useDiscountAnalysis = () => {
       productBreakdown: Object.values(productBreakdown),
       monthlyBreakdown: Object.values(monthlyBreakdown),
     };
-
-    console.log('Discount Metrics:', calculatedMetrics);
-    return calculatedMetrics;
   }, [discountData]);
 
   return {

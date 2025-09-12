@@ -29,7 +29,13 @@ const Index = () => {
     refetch
   } = useGoogleSheets();
   const handleSectionClick = useCallback((sectionId: string) => {
-    navigate(`/${sectionId}`);
+    if (sectionId === 'class-performance-series') {
+      window.open('https://class-performance-series-001.vercel.app/', '_blank');
+    } else if (sectionId === 'late-cancellations') {
+      navigate('/late-cancellations');
+    } else {
+      navigate(`/${sectionId}`);
+    }
   }, [navigate]);
   const handleRetry = useCallback(() => {
     refetch();
@@ -88,7 +94,7 @@ const Index = () => {
             {/* Compact Stats Cards */}
             <div className="flex flex-wrap justify-center gap-4 mb-6">
               <StatsCard title="Real-time" subtitle="Data Insights" />
-              <StatsCard title="8+" subtitle="Analytics Modules" />
+              <StatsCard title="10+" subtitle="Analytics Modules" />
               <StatsCard title="Precision" subtitle="Data Accuracy" />
             </div>
 

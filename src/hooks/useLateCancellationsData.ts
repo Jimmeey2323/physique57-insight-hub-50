@@ -8,7 +8,7 @@ const GOOGLE_CONFIG = {
   TOKEN_URL: "https://oauth2.googleapis.com/token"
 };
 
-const SPREADSHEET_ID = "12xbYJQrh5wyYDaFhQrq4L0-YkSSlA6z7nMCb66XEbCQ";
+const SPREADSHEET_ID = "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
 
 export const useLateCancellationsData = () => {
   const [data, setData] = useState<LateCancellationsData[]>([]);
@@ -62,7 +62,7 @@ export const useLateCancellationsData = () => {
       console.log('Access token obtained successfully');
       
       const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Late Cancellations?alt=json`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Checkins?alt=json`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -82,72 +82,58 @@ export const useLateCancellationsData = () => {
         return;
       }
 
-      // Process the data - the Late Cancellations sheet contains multiple tables
+      // Process the Checkins data and filter for late cancellations
       const processedData: LateCancellationsData[] = [];
       
-      let currentHeaders: string[] = [];
-      let currentTableType = '';
+      if (rows.length < 2) {
+        setData([]);
+        return;
+      }
+
+      const headers = rows[0];
+      const lateCancelledIndex = headers.findIndex((h: string) => h === 'Is Late Cancelled');
       
-      for (let i = 0; i < rows.length; i++) {
+      if (lateCancelledIndex === -1) {
+        console.error('Is Late Cancelled column not found');
+        setData([]);
+        return;
+      }
+
+      // Process data rows (skip header)
+      for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         
         // Skip empty rows
-        if (!row || row.length === 0 || !row[0]) {
-          continue;
-        }
+        if (!row || row.length === 0) continue;
         
-        // Check if this is a header row (contains "Location" and date columns)
-        if (row[0] === 'Location' || (Array.isArray(row) && row.includes('Location'))) {
-          currentHeaders = row;
-          
-          // Determine table type based on the second column
-          if (row.length > 1) {
-            if (row[1] === 'Cleaned Class') {
-              currentTableType = 'by-class';
-            } else if (row[1] === 'Trainer Name') {
-              currentTableType = 'by-trainer';
-            } else if (row[1] === 'Cleaned Product') {
-              currentTableType = 'by-product';
-            } else {
-              currentTableType = 'by-location';
-            }
-          }
-          continue;
-        }
+        // Only include rows where Is Late Cancelled = TRUE
+        if (row[lateCancelledIndex] !== 'TRUE') continue;
         
-        // Check if this is a table title row
-        if (row[0].includes('Late Cancellations') || 
-            row[0].includes('Members with >1') || 
-            row[0] === 'Grand Total') {
-          continue;
-        }
+        const dataRow: LateCancellationsData = {
+          memberId: row[headers.findIndex((h: string) => h === 'Member ID')] || '',
+          firstName: row[headers.findIndex((h: string) => h === 'First Name')] || '',
+          lastName: row[headers.findIndex((h: string) => h === 'Last Name')] || '',
+          email: row[headers.findIndex((h: string) => h === 'Email')] || '',
+          location: row[headers.findIndex((h: string) => h === 'Location')] || '',
+          sessionName: row[headers.findIndex((h: string) => h === 'Session Name')] || '',
+          teacherName: row[headers.findIndex((h: string) => h === 'Teacher Name')] || '',
+          cleanedProduct: row[headers.findIndex((h: string) => h === 'Cleaned Product')] || '',
+          cleanedCategory: row[headers.findIndex((h: string) => h === 'Cleaned Category')] || '',
+          cleanedClass: row[headers.findIndex((h: string) => h === 'Cleaned Class')] || '',
+          paymentMethodName: row[headers.findIndex((h: string) => h === 'Payment Method Name')] || '',
+          dateIST: row[headers.findIndex((h: string) => h === 'Date (IST)')] || '',
+          dayOfWeek: row[headers.findIndex((h: string) => h === 'Day of Week')] || '',
+          time: row[headers.findIndex((h: string) => h === 'Time')] || '',
+          duration: parseNumericValue(row[headers.findIndex((h: string) => h === 'Duration (Minutes)')] || '0'),
+          capacity: parseNumericValue(row[headers.findIndex((h: string) => h === 'Capacity')] || '0'),
+          month: row[headers.findIndex((h: string) => h === 'Month')] || '',
+          year: parseNumericValue(row[headers.findIndex((h: string) => h === 'Year')] || '0'),
+          paidAmount: parseNumericValue(row[headers.findIndex((h: string) => h === 'Paid')] || '0'),
+          isNew: row[headers.findIndex((h: string) => h === 'Is New')] || '',
+          tableType: 'checkins'
+        };
         
-        // Process data rows
-        if (currentHeaders.length > 0 && row[0] && row[0] !== 'Grand Total') {
-          const dataRow: LateCancellationsData = {
-            location: row[0] || '',
-            tableType: currentTableType
-          };
-          
-          // Add the second column based on table type
-          if (currentTableType === 'by-class' && row[1]) {
-            dataRow.cleanedClass = row[1];
-          } else if (currentTableType === 'by-trainer' && row[1]) {
-            dataRow.trainerName = row[1];
-          } else if (currentTableType === 'by-product' && row[1]) {
-            dataRow.cleanedProduct = row[1];
-          }
-          
-          // Add all numeric columns (dates and Grand Total)
-          for (let j = (currentTableType === 'by-location' ? 1 : 2); j < currentHeaders.length; j++) {
-            if (currentHeaders[j]) {
-              const value = row[j];
-              dataRow[currentHeaders[j]] = parseNumericValue(value);
-            }
-          }
-          
-          processedData.push(dataRow);
-        }
+        processedData.push(dataRow);
       }
 
       console.log('Processed late cancellations data sample:', processedData.slice(0, 5));
@@ -157,38 +143,8 @@ export const useLateCancellationsData = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching late cancellations data:', err);
-      
-      // Provide mock data for development/testing when API is not accessible
-      const mockData: LateCancellationsData[] = [
-        {
-          location: "Kwality House, Kemps Corner",
-          tableType: "by-location",
-          "Aug-2025": 500,
-          "Jul-2025": 462,
-          "Jun-2025": 442,
-          "Grand Total": 4481
-        },
-        {
-          location: "Supreme HQ, Bandra", 
-          tableType: "by-location",
-          "Aug-2025": 1005,
-          "Jul-2025": 882,
-          "Jun-2025": 914,
-          "Grand Total": 7346
-        },
-        {
-          location: "Kenkere House",
-          tableType: "by-location", 
-          "Aug-2025": 44,
-          "Jul-2025": 71,
-          "Jun-2025": 79,
-          "Grand Total": 1098
-        }
-      ];
-      
-      console.log('Using mock late cancellations data for development');
-      setData(mockData);
-      setError(null); // Don't set error when using mock data
+      setError('Failed to load late cancellations data');
+      setData([]); // Clear data on error - no mock data as per requirements
     } finally {
       setLoading(false);
     }

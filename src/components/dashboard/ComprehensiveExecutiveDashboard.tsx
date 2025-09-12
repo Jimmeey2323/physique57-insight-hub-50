@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,18 @@ import {
   TrendingDown,
   Percent,
   Clock,
-  Home
+  Home,
+  Play,
+  Pause
 } from 'lucide-react';
 import { ExecutiveLocationSelector } from './ExecutiveLocationSelector';
 import { ExecutiveMetricCardsGrid } from './ExecutiveMetricCardsGrid';
 import { ExecutiveChartsGrid } from './ExecutiveChartsGrid';
 import { EnhancedExecutiveDataTables } from './EnhancedExecutiveDataTables';
 import { ExecutiveTopPerformersGrid } from './ExecutiveTopPerformersGrid';
+import { ExecutiveDiscountsTab } from './ExecutiveDiscountsTab';
+import { ExecutiveFilterSection } from './ExecutiveFilterSection';
+import { PowerCycleBarreStrengthComparison } from './PowerCycleBarreStrengthComparison';
 import { SourceDataModal } from '@/components/ui/SourceDataModal';
 import { useGlobalFilters } from '@/contexts/GlobalFiltersContext';
 import { useSalesData } from '@/hooks/useSalesData';
@@ -34,10 +39,13 @@ import { usePayrollData } from '@/hooks/usePayrollData';
 import { useNewClientData } from '@/hooks/useNewClientData';
 import { useLeadsData } from '@/hooks/useLeadsData';
 import { useDiscountAnalysis } from '@/hooks/useDiscountAnalysis';
+import { AdvancedExportButton } from '@/components/ui/AdvancedExportButton';
 
 export const ComprehensiveExecutiveDashboard = () => {
   const [showSourceData, setShowSourceData] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { filters } = useGlobalFilters();
 
   // Load real data from hooks
@@ -112,9 +120,15 @@ export const ComprehensiveExecutiveDashboard = () => {
       'homeLocation'
     );
 
+    const prevPeriod = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+
     const filteredLeads = filterByLocation(
-      leadsData?.filter(item => filterByPreviousMonth(item.createdAt || '')) || [],
-      'location'
+      (leadsData?.filter(item => {
+        const createdOk = item.createdAt ? filterByPreviousMonth(item.createdAt) : false;
+        const periodOk = item.period ? item.period === prevPeriod : false;
+        return createdOk || periodOk;
+      }) || []),
+      'center'
     );
 
     const filteredDiscounts = filterByLocation(
@@ -147,8 +161,32 @@ export const ComprehensiveExecutiveDashboard = () => {
 
   const selectedLocation = Array.isArray(filters.location) ? filters.location[0] : filters.location;
 
+  const handlePlayAudio = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        // Select audio source based on location
+        const audioSrc = selectedLocation === 'Kwality House' 
+          ? '/kwality-house-audio.mp3' 
+          : '/placeholder-audio.mp3';
+        
+        audioRef.current.src = audioSrc;
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 p-6">
+      {/* Hidden audio element */}
+      <audio ref={audioRef} onEnded={() => setIsPlaying(false)} preload="metadata">
+        <source src="/placeholder-audio.mp3" type="audio/mpeg" />
+        Your browser does not support the audio element.
+      </audio>
+      
       <div className="max-w-[1600px] mx-auto space-y-8">
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900 via-purple-800 to-indigo-700 rounded-3xl text-white shadow-2xl">
@@ -193,7 +231,25 @@ export const ComprehensiveExecutiveDashboard = () => {
               </div>
 
               {/* Dashboard Navigation Button */}
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center gap-4 mt-6">
+                <Button 
+                  onClick={handlePlayAudio}
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm px-6 py-3 rounded-full text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5 mr-2" /> : <Play className="w-5 h-5 mr-2" />}
+                  {isPlaying ? 'Pause' : 'Play'}
+                </Button>
+                <AdvancedExportButton 
+                  salesData={previousMonthData.sales}
+                  sessionsData={previousMonthData.sessions}
+                  newClientData={previousMonthData.newClients}
+                  payrollData={previousMonthData.payroll}
+                  lateCancellationsData={[]}
+                  discountData={previousMonthData.discounts}
+                  defaultFileName="executive-dashboard-export"
+                  size="lg"
+                  variant="outline"
+                />
                 <Button 
                   onClick={() => window.location.href = '/'}
                   className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm px-6 py-3 rounded-full text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
@@ -206,8 +262,8 @@ export const ComprehensiveExecutiveDashboard = () => {
           </div>
         </div>
 
-        {/* Location Selector - moved to top */}
-        <ExecutiveLocationSelector locations={availableLocations} />
+        {/* Filter Section with Location Selector */}
+        <ExecutiveFilterSection availableLocations={availableLocations} />
 
         {/* Key Performance Metrics - 12 Cards with real data */}
         <ExecutiveMetricCardsGrid data={previousMonthData} />
@@ -231,7 +287,7 @@ export const ComprehensiveExecutiveDashboard = () => {
 
           <CardContent className="p-8">
             <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-              <TabsList className="bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-xl border-0 grid grid-cols-4 w-full max-w-4xl mx-auto overflow-hidden mb-8">
+              <TabsList className="bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-xl border-0 grid grid-cols-5 w-full max-w-6xl mx-auto overflow-hidden mb-8">
                 <TabsTrigger 
                   value="overview" 
                   className="relative rounded-xl px-4 py-3 font-semibold text-sm transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50"
@@ -254,6 +310,13 @@ export const ComprehensiveExecutiveDashboard = () => {
                   Trend Analysis
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="discounts" 
+                  className="relative rounded-xl px-4 py-3 font-semibold text-sm transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50"
+                >
+                  <Percent className="w-4 h-4 mr-2" />
+                  Discounts
+                </TabsTrigger>
+                <TabsTrigger 
                   value="insights" 
                   className="relative rounded-xl px-4 py-3 font-semibold text-sm transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50"
                 >
@@ -273,6 +336,15 @@ export const ComprehensiveExecutiveDashboard = () => {
 
                 <TabsContent value="trends" className="space-y-6 mt-0">
                   <ExecutiveChartsGrid data={previousMonthData} showTrends={true} />
+                </TabsContent>
+
+                <TabsContent value="discounts" className="space-y-6 mt-0">
+                  <ExecutiveDiscountsTab data={previousMonthData.sales} selectedLocation={selectedLocation} />
+                  <PowerCycleBarreStrengthComparison data={{
+                    sessions: previousMonthData.sessions,
+                    payroll: previousMonthData.payroll,
+                    sales: previousMonthData.sales
+                  }} />
                 </TabsContent>
 
                 <TabsContent value="insights" className="space-y-6 mt-0">
