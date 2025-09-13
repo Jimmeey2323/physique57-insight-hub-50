@@ -4,7 +4,7 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { Footer } from '@/components/ui/footer';
 import { ModernHeroSection } from '@/components/ui/ModernHeroSection';
 import { AdvancedExportButton } from '@/components/ui/AdvancedExportButton';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatNumber } from '@/utils/formatters';
 
 const SalesAnalytics = () => {
   const { data } = useGoogleSheets();
@@ -42,28 +42,29 @@ const SalesAnalytics = () => {
       { key: 'Kenkere House', name: 'Kenkere' }
     ];
 
-    // Calculate metrics more efficiently
-    const locationMetrics = locations.map(location => {
-      const locationData = previousMonthData.filter(item => 
-        location.key === 'Kenkere House' 
-          ? item.calculatedLocation?.includes('Kenkere') || item.calculatedLocation === 'Kenkere House'
-          : item.calculatedLocation === location.key
-      );
-      
-      // Use reduce with better error handling
-      const totalRevenue = locationData.reduce((sum, item) => {
-        const value = typeof item.paymentValue === 'number' ? item.paymentValue : 0;
-        return sum + value;
-      }, 0);
-      
-      return {
-        location: location.name,
-        label: 'Previous Month Revenue',
-        value: formatCurrency(totalRevenue)
-      };
-    });
+    // Calculate the same metrics as shown in metric cards for consistency
+    const totalRevenue = data.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+    const totalTransactions = data.length;
+    const uniqueMembers = new Set(data.map(item => item.memberId)).size;
 
-    return locationMetrics;
+    // Add overall metrics that match the metric cards
+    return [
+      {
+        location: 'Total',
+        label: 'Total Revenue',
+        value: formatCurrency(totalRevenue)
+      },
+      {
+        location: 'Transactions',
+        label: 'Total Count',
+        value: formatNumber(totalTransactions)
+      },
+      {
+        location: 'Customers',
+        label: 'Unique Count',
+        value: formatNumber(uniqueMembers)
+      }
+    ];
   }, [data]); // Keep dependency on data only
 
   const exportButton = (

@@ -51,6 +51,10 @@ export interface SessionData {
   fillPercentage: number;
   sessionCount: number;
   totalAttendees: number;
+  uniqueId1?: string;
+  uniqueId2?: string;
+  classes?: string;
+  sessionName?: string;
 }
 
 export interface NewClientData {
@@ -283,6 +287,7 @@ export interface DiscountAnalysisData {
   discountPercentage?: number;
   paymentDate?: string;
   soldBy?: string;
+  paymentValue?: number;
   [key: string]: string | number | undefined;
 }
 

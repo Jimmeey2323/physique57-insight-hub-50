@@ -96,19 +96,24 @@ export const PaymentMethodMonthOnMonthTable: React.FC<PaymentMethodMonthOnMonthT
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Generate last 18 months of data
-    for (let i = 17; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - i, 1);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const monthName = monthNames[date.getMonth()];
-      months.push({
-        key: `${year}-${String(month).padStart(2, '0')}`,
-        display: `${monthName} ${year}`,
-        year: year,
-        month: month,
-        quarter: Math.ceil(month / 3)
-      });
+    // Generate months starting from Jan 2024 up to current month
+    const startYear = 2024;
+    const startMonth = 0; // January (0-indexed)
+    
+    for (let year = startYear; year <= currentYear; year++) {
+      const fromMonth = year === startYear ? startMonth : 0;
+      const toMonth = year === currentYear ? currentMonth : 11;
+      
+      for (let month = fromMonth; month <= toMonth; month++) {
+        const monthName = monthNames[month];
+        months.push({
+          key: `${year}-${String(month + 1).padStart(2, '0')}`,
+          display: `${monthName} ${year}`,
+          year: year,
+          month: month + 1,
+          quarter: Math.ceil((month + 1) / 3)
+        });
+      }
     }
     return months;
   }, []);

@@ -12,6 +12,7 @@ import { NewClientFilterOptions } from '@/types/dashboard';
 import { ModernHeroSection } from '@/components/ui/ModernHeroSection';
 import { formatNumber } from '@/utils/formatters';
 import { getPreviousMonthDateRange, parseDate } from '@/utils/dateUtils';
+import { cn } from '@/lib/utils';
 
 // Import new components for rebuilt client conversion tab
 import { EnhancedClientConversionFilterSection } from '@/components/dashboard/EnhancedClientConversionFilterSection';
@@ -286,59 +287,89 @@ const ClientRetention = () => {
             membershipTypes={uniqueMembershipTypes}
           />
 
-          {/* Location Selector */}
-          <Card className="bg-white shadow-sm border border-gray-200">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <Button
-                  variant={selectedLocation === 'All Locations' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setSelectedLocation('All Locations')}
-                  className="gap-2 text-xs"
-                >
+          {/* Location Tabs - Styled like Sales Tab */}
+          <div className="flex justify-center mb-8">
+            <div className="glass-morphism p-2 rounded-2xl shadow-lg border-0 grid grid-cols-4 w-full max-w-4xl">
+              <button
+                onClick={() => setSelectedLocation('All Locations')}
+                className={cn(
+                  "tab-modern px-6 py-3 rounded-xl transition-all duration-300 font-medium text-sm",
+                  selectedLocation === 'All Locations'
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                )}
+              >
+                <div className="flex items-center gap-2 justify-center">
                   <Users className="w-4 h-4" />
-                  All Locations ({data.length})
-                </Button>
-                <Button
-                  variant={selectedLocation === 'Kwality House, Kemps Corner' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setSelectedLocation('Kwality House, Kemps Corner')}
-                  className="gap-2 text-xs"
-                >
+                  <div className="text-center">
+                    <div className="font-bold">All Locations</div>
+                    <div className="text-xs opacity-75">({data.length})</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setSelectedLocation('Kwality House, Kemps Corner')}
+                className={cn(
+                  "tab-modern px-6 py-3 rounded-xl transition-all duration-300 font-medium text-sm",
+                  selectedLocation === 'Kwality House, Kemps Corner'
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                )}
+              >
+                <div className="flex items-center gap-2 justify-center">
                   <Users className="w-4 h-4" />
-                  Kemps Corner ({data.filter(client => 
-                    client.firstVisitLocation === 'Kwality House, Kemps Corner' || client.homeLocation === 'Kwality House, Kemps Corner'
-                  ).length})
-                </Button>
-                <Button
-                  variant={selectedLocation === 'Supreme HQ, Bandra' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setSelectedLocation('Supreme HQ, Bandra')}
-                  className="gap-2 text-xs"
-                >
+                  <div className="text-center">
+                    <div className="font-bold">Kwality House</div>
+                    <div className="text-xs opacity-75">Kemps Corner ({data.filter(client => 
+                      client.firstVisitLocation === 'Kwality House, Kemps Corner' || client.homeLocation === 'Kwality House, Kemps Corner'
+                    ).length})</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setSelectedLocation('Supreme HQ, Bandra')}
+                className={cn(
+                  "tab-modern px-6 py-3 rounded-xl transition-all duration-300 font-medium text-sm",
+                  selectedLocation === 'Supreme HQ, Bandra'
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                )}
+              >
+                <div className="flex items-center gap-2 justify-center">
                   <Users className="w-4 h-4" />
-                  Bandra ({data.filter(client => 
-                    client.firstVisitLocation === 'Supreme HQ, Bandra' || client.homeLocation === 'Supreme HQ, Bandra'
-                  ).length})
-                </Button>
-                <Button
-                  variant={selectedLocation === 'Kenkere House, Bengaluru' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setSelectedLocation('Kenkere House, Bengaluru')}
-                  className="gap-2 text-xs"
-                >
+                  <div className="text-center">
+                    <div className="font-bold">Supreme HQ</div>
+                    <div className="text-xs opacity-75">Bandra ({data.filter(client => 
+                      client.firstVisitLocation === 'Supreme HQ, Bandra' || client.homeLocation === 'Supreme HQ, Bandra'
+                    ).length})</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setSelectedLocation('Kenkere House, Bengaluru')}
+                className={cn(
+                  "tab-modern px-6 py-3 rounded-xl transition-all duration-300 font-medium text-sm",
+                  selectedLocation === 'Kenkere House, Bengaluru'
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                )}
+              >
+                <div className="flex items-center gap-2 justify-center">
                   <Users className="w-4 h-4" />
-                  Kenkere House ({data.filter(client => {
-                    const firstLoc = (client.firstVisitLocation || '').toLowerCase();
-                    const homeLoc = (client.homeLocation || '').toLowerCase();
-                    return firstLoc.includes('kenkere') || homeLoc.includes('kenkere') || 
-                           firstLoc.includes('bengaluru') || homeLoc.includes('bengaluru') ||
-                           client.firstVisitLocation === 'Kenkere House' || client.homeLocation === 'Kenkere House';
-                  }).length})
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="text-center">
+                    <div className="font-bold">Kenkere House</div>
+                    <div className="text-xs opacity-75">Bengaluru ({data.filter(client => {
+                      const firstLoc = (client.firstVisitLocation || '').toLowerCase();
+                      const homeLoc = (client.homeLocation || '').toLowerCase();
+                      return firstLoc.includes('kenkere') || homeLoc.includes('kenkere') || 
+                             firstLoc.includes('bengaluru') || homeLoc.includes('bengaluru') ||
+                             client.firstVisitLocation === 'Kenkere House' || client.homeLocation === 'Kenkere House';
+                    }).length})</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
 
           {/* Metric Cards */}
           <ClientConversionMetricCards 

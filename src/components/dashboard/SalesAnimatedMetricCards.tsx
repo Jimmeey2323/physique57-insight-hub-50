@@ -41,11 +41,34 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
     const averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
     const averageSpendPerMember = uniqueMembers > 0 ? totalRevenue / uniqueMembers : 0;
 
-    // Calculate growth rates (comparing with previous period - simplified)
-    const revenueGrowth = 12.5; // This would be calculated from actual historical data
-    const transactionGrowth = 8.3;
-    const memberGrowth = 15.2;
-    const atvGrowth = 4.7;
+    // Calculate previous month metrics for comparison
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
+    // Filter for previous month data
+    const prevMonthData = data.filter(item => {
+      if (!item.paymentDate) return false;
+      const paymentDate = new Date(item.paymentDate);
+      return paymentDate.getMonth() === prevMonth && paymentDate.getFullYear() === prevYear;
+    });
+    
+    // Calculate previous month metrics
+    const prevRevenue = prevMonthData.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+    const prevTransactions = prevMonthData.length;
+    const prevMembers = new Set(prevMonthData.map(item => item.memberId)).size;
+    const prevATV = prevTransactions > 0 ? prevRevenue / prevTransactions : 0;
+    const prevASV = prevMembers > 0 ? prevRevenue / prevMembers : 0;
+    const prevVAT = prevMonthData.reduce((sum, item) => sum + (item.paymentVAT || 0), 0);
+    
+    // Calculate growth rates
+    const revenueGrowth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100) : 0;
+    const transactionGrowth = prevTransactions > 0 ? ((totalTransactions - prevTransactions) / prevTransactions * 100) : 0;
+    const memberGrowth = prevMembers > 0 ? ((uniqueMembers - prevMembers) / prevMembers * 100) : 0;
+    const atvGrowth = prevATV > 0 ? ((averageTransactionValue - prevATV) / prevATV * 100) : 0;
+    const asvGrowth = prevASV > 0 ? ((averageSpendPerMember - prevASV) / prevASV * 100) : 0;
+    const vatGrowth = prevVAT > 0 ? ((totalVAT - prevVAT) / prevVAT * 100) : 0;
 
     const calculatedMetrics = [
       {
@@ -59,7 +82,9 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'revenue',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatCurrency(prevRevenue),
+        period: "vs last month"
       },
       {
         title: "Total Transactions",
@@ -72,7 +97,9 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'transactions',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatNumber(prevTransactions),
+        period: "vs last month"
       },
       {
         title: "Unique Customers",
@@ -85,7 +112,9 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'members',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatNumber(prevMembers),
+        period: "vs last month"
       },
       {
         title: "Avg Transaction Value",
@@ -98,12 +127,14 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'atv',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatCurrency(prevATV),
+        period: "vs last month"
       },
       {
         title: "Avg Spend per Customer",
         value: formatCurrency(averageSpendPerMember),
-        change: 6.8,
+        change: asvGrowth,
         icon: Activity,
         color: "cyan",
         description: "Average spending per unique customer",
@@ -111,12 +142,14 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'asv',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatCurrency(prevASV),
+        period: "vs last month"
       },
       {
         title: "Total VAT Collected",
         value: formatCurrency(totalVAT),
-        change: 11.2,
+        change: vatGrowth,
         icon: CreditCard,
         color: "pink",
         description: "VAT amount collected from transactions",
@@ -124,7 +157,9 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
         metricType: 'vat',
         grossRevenue: totalRevenue,
         transactions: totalTransactions,
-        uniqueMembers: uniqueMembers
+        uniqueMembers: uniqueMembers,
+        previousValue: formatCurrency(prevVAT),
+        period: "vs last month"
       }
     ];
 
@@ -229,21 +264,29 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
                     <h3 className="font-semibold text-sm">{metric.title}</h3>
                   </div>
                   
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     <p className="text-3xl font-bold">{metric.value}</p>
                     
-                    <div className="flex items-center gap-2">
-                      {isPositive ? (
-                        <TrendingUp className="w-4 h-4 text-green-200" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-red-200" />
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {isPositive ? (
+                          <TrendingUp className="w-4 h-4 text-green-200" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-200" />
+                        )}
+                        <span className={`text-sm font-medium ${
+                          isPositive ? 'text-green-200' : 'text-red-200'
+                        }`}>
+                          {isPositive ? '+' : ''}{metric.change.toFixed(1)}%
+                        </span>
+                        <span className="text-sm text-white/80">{metric.period}</span>
+                      </div>
+                      {metric.previousValue && (
+                        <div className="text-right">
+                          <div className="text-xs text-white/60">Last Month</div>
+                          <div className="text-sm font-semibold text-white/90">{metric.previousValue}</div>
+                        </div>
                       )}
-                      <span className={`text-sm font-medium ${
-                        isPositive ? 'text-green-200' : 'text-red-200'
-                      }`}>
-                        {isPositive ? '+' : ''}{metric.change.toFixed(1)}%
-                      </span>
-                      <span className="text-sm text-white/80">vs last month</span>
                     </div>
                   </div>
                 </div>
