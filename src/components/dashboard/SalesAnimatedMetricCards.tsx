@@ -41,17 +41,29 @@ export const SalesAnimatedMetricCards: React.FC<SalesAnimatedMetricCardsProps> =
     const averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
     const averageSpendPerMember = uniqueMembers > 0 ? totalRevenue / uniqueMembers : 0;
 
-    // Calculate previous month metrics for comparison
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    // Calculate current month and previous month data
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    // Get previous month date range
+    const prevMonthStart = new Date(currentYear, currentMonth - 1, 1);
+    const prevMonthEnd = new Date(currentYear, currentMonth, 0);
     
     // Filter for previous month data
     const prevMonthData = data.filter(item => {
       if (!item.paymentDate) return false;
-      const paymentDate = new Date(item.paymentDate);
-      return paymentDate.getMonth() === prevMonth && paymentDate.getFullYear() === prevYear;
+      
+      // Parse the date properly
+      let paymentDate: Date;
+      if (item.paymentDate.includes('/')) {
+        const parts = item.paymentDate.split('/');
+        paymentDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      } else {
+        paymentDate = new Date(item.paymentDate);
+      }
+      
+      return paymentDate >= prevMonthStart && paymentDate <= prevMonthEnd;
     });
     
     // Calculate previous month metrics

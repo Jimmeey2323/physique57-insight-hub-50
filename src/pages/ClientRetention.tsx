@@ -386,8 +386,19 @@ const ClientRetention = () => {
           {/* Simplified Ranking System */}
           <ClientConversionSimplifiedRanks data={filteredData} />
 
-          {/* Enhanced Interactive Charts */}
-          <ClientConversionEnhancedCharts data={filteredData} />
+          {/* Enhanced Interactive Charts - Collapsed by default */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border">
+              <details className="group">
+                <summary className="cursor-pointer p-4 font-semibold text-slate-800 border-b group-open:bg-gray-50">
+                  📊 Interactive Charts & Visualizations
+                </summary>
+                <div className="p-4">
+                  <ClientConversionEnhancedCharts data={filteredData} />
+                </div>
+              </details>
+            </div>
+          </div>
 
           {/* Data Table Selector */}
           <ClientConversionDataTableSelector 

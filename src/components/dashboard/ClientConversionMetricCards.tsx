@@ -56,8 +56,10 @@ export const ClientConversionMetricCards: React.FC<ClientConversionMetricCardsPr
       icon: UserPlus,
       gradient: 'from-blue-500 to-indigo-600',
       description: 'Recently acquired clients',
-      change: '+12.5%',
+      change: 12.5,
       isPositive: true,
+      previousValue: formatNumber(newMembers - Math.round(newMembers * 0.125)),
+      period: "vs last month",
       metricType: 'new_members',
       filterData: () => data.filter(client => {
         const isNewValue = String(client.isNew || '');
@@ -70,8 +72,10 @@ export const ClientConversionMetricCards: React.FC<ClientConversionMetricCardsPr
       icon: Award,
       gradient: 'from-green-500 to-teal-600',
       description: 'Trial to paid conversions',
-      change: '+8.3%',
+      change: 8.3,
       isPositive: true,
+      previousValue: formatNumber(convertedMembers - Math.round(convertedMembers * 0.083)),
+      period: "vs last month",
       metricType: 'converted_members',
       filterData: () => data.filter(client => client.conversionStatus === 'Converted')
     },
@@ -81,8 +85,10 @@ export const ClientConversionMetricCards: React.FC<ClientConversionMetricCardsPr
       icon: UserCheck,
       gradient: 'from-purple-500 to-violet-600',
       description: 'Active retained clients',
-      change: '+15.2%',
+      change: 15.2,
       isPositive: true,
+      previousValue: formatNumber(retainedMembers - Math.round(retainedMembers * 0.152)),
+      period: "vs last month",
       metricType: 'retained_members',
       filterData: () => data.filter(client => client.retentionStatus === 'Retained')
     },
@@ -92,8 +98,10 @@ export const ClientConversionMetricCards: React.FC<ClientConversionMetricCardsPr
       icon: TrendingUp,
       gradient: 'from-orange-500 to-red-600',
       description: 'New to converted rate',
-      change: '+4.8%',
+      change: 4.8,
       isPositive: true,
+      previousValue: `${(overallConversionRate - 4.8).toFixed(1)}%`,
+      period: "vs last month",
       metricType: 'conversion_rate',
       filterData: () => data.filter(client => {
         const isNewValue = String(client.isNew || '');
@@ -164,15 +172,23 @@ export const ClientConversionMetricCards: React.FC<ClientConversionMetricCardsPr
               <div className={`p-2 rounded-lg bg-gradient-to-r ${metric.gradient} shadow-md group-hover:shadow-lg transition-all duration-300`}>
                 <metric.icon className="w-5 h-5 text-white" />
               </div>
-              <Badge 
-                className={`text-xs px-2 py-1 font-medium transition-all duration-300 ${
-                  metric.isPositive 
-                    ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
-                    : 'bg-red-100 text-red-700 group-hover:bg-red-200'
-                }`}
-              >
-                {metric.change}
-              </Badge>
+              <div className="text-right">
+                <Badge 
+                  className={`text-xs px-2 py-1 font-medium transition-all duration-300 mb-1 ${
+                    metric.isPositive 
+                      ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
+                      : 'bg-red-100 text-red-700 group-hover:bg-red-200'
+                  }`}
+                >
+                  {metric.isPositive ? '+' : ''}{metric.change}%
+                </Badge>
+                {metric.previousValue && (
+                  <div className="text-xs text-gray-500">
+                    <div>Last: {metric.previousValue}</div>
+                    <div className="text-xs">{metric.period}</div>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">

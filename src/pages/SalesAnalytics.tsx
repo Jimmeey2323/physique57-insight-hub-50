@@ -12,59 +12,22 @@ const SalesAnalytics = () => {
   const heroMetrics = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    // Get previous month date range
-    const now = new Date();
-    const firstDayPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDayPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    // Filter data for previous month with better date parsing
-    const previousMonthData = data.filter(item => {
-      if (!item.paymentDate) return false;
-      
-      // Handle different date formats
-      let itemDate: Date;
-      if (item.paymentDate.includes('/')) {
-        // Format: 2025/09/08 or 2025-09-08
-        const dateStr = item.paymentDate.replace(/[,\s]+\d{2}:\d{2}:\d{2}$/, ''); // Remove time if present
-        itemDate = new Date(dateStr);
-      } else {
-        itemDate = new Date(item.paymentDate);
-      }
-      
-      return !isNaN(itemDate.getTime()) && 
-             itemDate >= firstDayPreviousMonth && 
-             itemDate <= lastDayPreviousMonth;
-    });
-
     const locations = [
       { key: 'Kwality House, Kemps Corner', name: 'Kwality' },
       { key: 'Supreme HQ, Bandra', name: 'Supreme' },
       { key: 'Kenkere House', name: 'Kenkere' }
     ];
 
-    // Calculate the same metrics as shown in metric cards for consistency
-    const totalRevenue = data.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
-    const totalTransactions = data.length;
-    const uniqueMembers = new Set(data.map(item => item.memberId)).size;
-
-    // Add overall metrics that match the metric cards
-    return [
-      {
-        location: 'Total',
-        label: 'Total Revenue',
+    return locations.map(location => {
+      const locationData = data.filter(item => item.calculatedLocation === location.key);
+      const totalRevenue = locationData.reduce((sum, item) => sum + (item.paymentValue || 0), 0);
+      
+      return {
+        location: location.name,
+        label: 'Revenue',
         value: formatCurrency(totalRevenue)
-      },
-      {
-        location: 'Transactions',
-        label: 'Total Count',
-        value: formatNumber(totalTransactions)
-      },
-      {
-        location: 'Customers',
-        label: 'Unique Count',
-        value: formatNumber(uniqueMembers)
-      }
-    ];
+      };
+    });
   }, [data]); // Keep dependency on data only
 
   const exportButton = (

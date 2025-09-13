@@ -242,87 +242,96 @@ export const CategoryPerformanceTable: React.FC<CategoryPerformanceTableProps> =
 
       <CardContent className="p-0">
         <div className="overflow-x-auto rounded-lg">
-          <table className="min-w-full bg-white border-t border-gray-200 rounded-lg">
-            <thead className="bg-gradient-to-r from-orange-700 to-orange-900 text-white font-semibold text-sm uppercase tracking-wider sticky top-0 z-20">
-              <tr className="bg-indigo-900">
-                <th className="text-white font-semibold uppercase tracking-wider px-6 py-3 text-left rounded-tl-lg sticky left-0 z-30 bg-violet-900">Category</th>
-                {monthlyData.map(({
-                key,
-                display
-              }) => <th key={key} className="text-white font-semibold text-xs uppercase tracking-wider px-3 py-2 border-l border-indigo-600 min-w-32 bg-violet-900">
-                    <div className="flex flex-col">
-                      <span className="text-sm">{display.split(' ')[0]}</span>
-                      <span className="text-xs text-yellow-300">{display.split(' ')[1]}</span>
-                    </div>
-                  </th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {processedData.map(item => <tr key={item.category} onClick={() => onRowClick(item)} className="cursor-pointer border-b border-gray-100 transition-colors duration-200 bg-slate-50">
-                  <td className="px-6 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200 min-w-60">
-                    <div className="flex items-center gap-4 min-w-60">
-                      <span className="font-bold text-slate-700">{item.category}</span>
-                    </div>
-                  </td>
+            <table className="min-w-full bg-white border-t border-gray-200 rounded-lg">
+              <thead className="bg-gradient-to-r from-orange-700 to-orange-900 text-white font-semibold text-sm uppercase tracking-wider sticky top-0 z-20">
+                <tr className="bg-indigo-900">
+                  <th className="text-white font-semibold uppercase tracking-wider px-6 py-3 text-left rounded-tl-lg sticky left-0 z-30 bg-violet-900">Category</th>
+                  <th className="text-white font-semibold text-xs uppercase tracking-wider px-3 py-2 bg-violet-900 min-w-24">Contribution %</th>
                   {monthlyData.map(({
-                key,
-                year,
-                month,
-                display
-              }, monthIndex) => {
-                const current = item.monthlyValues[key] || 0;
-                const previous = monthIndex > 0 ? item.monthlyValues[monthlyData[monthIndex - 1].key] || 0 : 0;
-                
-                return <td 
-                  key={key} 
-                  className="px-3 py-3 text-center text-sm text-gray-900 font-mono border-l border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent row click
-                    
-                    // Filter data for this specific month and category
-                    const monthSpecificData = (item.rawData || []).filter((transaction: any) => {
-                      const itemDate = parseDate(transaction.paymentDate);
-                      if (!itemDate) return false;
-                      return itemDate.getFullYear() === year && itemDate.getMonth() + 1 === month;
-                    });
-                    
-                    const monthRevenue = monthSpecificData.reduce((sum: any, transaction: any) => sum + (transaction.paymentValue || 0), 0);
-                    const monthTransactions = monthSpecificData.length;
-                    const monthCustomers = new Set(monthSpecificData.map((transaction: any) => transaction.memberId || transaction.customerEmail)).size;
-                    
-                    const enhancedCellData = {
-                      ...item,
-                      name: `${item.category} - ${display}`,
-                      totalRevenue: monthRevenue,
-                      grossRevenue: monthRevenue,
-                      netRevenue: monthRevenue,
-                      totalValue: monthRevenue,
-                      totalCurrent: monthRevenue,
-                      metricValue: monthRevenue,
-                      transactions: monthTransactions,
-                      totalTransactions: monthTransactions,
-                      uniqueMembers: monthCustomers,
-                      totalCustomers: monthCustomers,
-                      rawData: monthSpecificData,
-                      filteredTransactionData: monthSpecificData,
-                      isDynamic: true,
-                      calculatedFromFiltered: true,
-                      cellSpecific: true,
-                      month: display,
-                      monthKey: key
-                    };
-                    
-                    console.log(`Cell click: ${item.category} - ${display}: ${monthTransactions} transactions, ${monthRevenue} revenue`);
-                    onRowClick(enhancedCellData);
-                  }}
-                >
-                        <div className="flex items-center justify-center">
-                          {formatMetricValue(current, selectedMetric)}
-                          {getGrowthIndicator(current, previous, 'month')}
-                        </div>
-                      </td>;
-              })}
-                </tr>)}
+                  key,
+                  display
+                }) => <th key={key} className="text-white font-semibold text-xs uppercase tracking-wider px-3 py-2 border-l border-indigo-600 min-w-32 bg-violet-900">
+                      <div className="flex flex-col">
+                        <span className="text-sm">{display.split(' ')[0]}</span>
+                        <span className="text-xs text-yellow-300">{display.split(' ')[1]}</span>
+                      </div>
+                    </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {processedData.map(item => <tr key={item.category} onClick={() => onRowClick(item)} className="cursor-pointer border-b border-gray-100 transition-colors duration-200 bg-slate-50 hover:bg-blue-50">
+                    <td className="px-6 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200 min-w-60">
+                      <div className="flex items-center gap-4 min-w-60">
+                        <span className="font-bold text-slate-700">{item.category}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center text-sm text-gray-900 font-mono">
+                      {(item.metricValue / totalsRow.metricValue * 100).toFixed(1)}%
+                    </td>
+                    {monthlyData.map(({
+                  key,
+                  year,
+                  month,
+                  display
+                }, monthIndex) => {
+                  const current = item.monthlyValues[key] || 0;
+                  const previous = monthIndex > 0 ? item.monthlyValues[monthlyData[monthIndex - 1].key] || 0 : 0;
+                  const monthTotal = totalsRow.monthlyValues[key] || 0;
+                  const contribution = monthTotal > 0 ? (current / monthTotal * 100) : 0;
+                  
+                  return <td 
+                    key={key} 
+                    className="px-3 py-3 text-center text-sm text-gray-900 font-mono border-l border-gray-100 hover:bg-blue-100 cursor-pointer transition-colors group relative"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent row click
+                      
+                      // Filter data for this specific month and category
+                      const monthSpecificData = (item.rawData || []).filter((transaction: any) => {
+                        const itemDate = parseDate(transaction.paymentDate);
+                        if (!itemDate) return false;
+                        return itemDate.getFullYear() === year && itemDate.getMonth() + 1 === month;
+                      });
+                      
+                      const monthRevenue = monthSpecificData.reduce((sum: any, transaction: any) => sum + (transaction.paymentValue || 0), 0);
+                      const monthTransactions = monthSpecificData.length;
+                      const monthCustomers = new Set(monthSpecificData.map((transaction: any) => transaction.memberId || transaction.customerEmail)).size;
+                      
+                      const enhancedCellData = {
+                        ...item,
+                        name: `${item.category} - ${display}`,
+                        totalRevenue: monthRevenue,
+                        grossRevenue: monthRevenue,
+                        netRevenue: monthRevenue,
+                        totalValue: monthRevenue,
+                        totalCurrent: monthRevenue,
+                        metricValue: monthRevenue,
+                        transactions: monthTransactions,
+                        totalTransactions: monthTransactions,
+                        uniqueMembers: monthCustomers,
+                        totalCustomers: monthCustomers,
+                        rawData: monthSpecificData,
+                        filteredTransactionData: monthSpecificData,
+                        isDynamic: true,
+                        calculatedFromFiltered: true,
+                        cellSpecific: true,
+                        month: display,
+                        monthKey: key
+                      };
+                      
+                      console.log(`Cell click: ${item.category} - ${display}: ${monthTransactions} transactions, ${monthRevenue} revenue`);
+                      onRowClick(enhancedCellData);
+                    }}
+                  >
+                          <div className="flex flex-col items-center justify-center">
+                            <div>{formatMetricValue(current, selectedMetric)}</div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bg-slate-800 text-white px-2 py-1 rounded text-xs z-40 -mt-8">
+                              {getGrowthIndicator(current, previous, 'month')}
+                              {contribution > 0 && <div className="text-blue-200">{contribution.toFixed(1)}% of month</div>}
+                            </div>
+                          </div>
+                        </td>;
+                })}
+                  </tr>)}
               <tr className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-t-4 border-indigo-800 font-bold">
                 <td 
                   className="px-6 py-3 text-sm font-bold text-indigo-900 sticky left-0 border-r border-indigo-200 bg-slate-50 hover:bg-blue-100 cursor-pointer transition-colors"
